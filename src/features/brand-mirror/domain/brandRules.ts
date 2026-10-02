@@ -1,10 +1,25 @@
 import type { BrandTheme, BrandTokens } from '../models/brandMirrorModels'
 import { INITIAL_TOKENS, THEME_PRESETS } from '../models/brandMirrorModels'
+import { ensurePrimaryScale } from './paletteGenerator'
 
 const HEX_COLOR = /^#[0-9A-F]{6}$/i
 
 export function cloneTokens(tokens: BrandTokens): BrandTokens {
-  return { ...tokens, radiusScale: [...tokens.radiusScale], spacingScale: [...tokens.spacingScale], typeScale: [...tokens.typeScale] }
+  return {
+    ...tokens,
+    radiusScale: [...tokens.radiusScale],
+    spacingScale: [...tokens.spacingScale],
+    typeScale: [...tokens.typeScale],
+    primaryScale: tokens.primaryScale
+      ? { seed: tokens.primaryScale.seed, stops: tokens.primaryScale.stops.map((stop) => ({ ...stop })) }
+      : undefined,
+  }
+}
+
+/** 补齐历史令牌缺失的主色梯度，归一化为运行时完整结构 */
+export function normalizeTokens(tokens: BrandTokens): BrandTokens {
+  const cloned = cloneTokens(tokens)
+  return { ...cloned, primaryScale: ensurePrimaryScale(cloned) }
 }
 
 export function isHexColor(value: string): boolean {
@@ -29,26 +44,11 @@ export function validateTokens(tokens: BrandTokens): string | null {
   if (!isHexColor(tokens.primary) || !isHexColor(tokens.secondary)) return '请输入 6 位 HEX 颜色'
   if (tokens.radiusScale.length !== 4 || tokens.spacingScale.length !== 5 || tokens.typeScale.length !== 6) return '令牌层级数量不完整'
   if (tokens.typeScale.some((value) => value < 10 || value > 72)) return '字号范围应在 10–72px'
+  if (tokens.primaryScale && (tokens.primaryScale.stops.length !== 10 || tokens.primaryScale.stops.some((stop) => !isHexColor(stop.color)))) return '主色梯度档位不完整'
   return null
 }
 
-function channel(value: number): number {
-  const scaled = value / 255
-  return scaled <= 0.03928 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4
-}
-
-function luminance(color: string): number {
-  const red = Number.parseInt(color.slice(1, 3), 16)
-  const green = Number.parseInt(color.slice(3, 5), 16)
-  const blue = Number.parseInt(color.slice(5, 7), 16)
-  return 0.2126 * channel(red) + 0.7152 * channel(green) + 0.0722 * channel(blue)
-}
-
-export function contrastRatio(first: string, second: string): number {
-  const one = luminance(first)
-  const two = luminance(second)
-  return (Math.max(one, two) + 0.05) / (Math.min(one, two) + 0.05)
-}
+export { contrastRatio } from './paletteGenerator'
 
 export function themeTokens(theme: BrandTheme): BrandTokens {
   return cloneTokens(THEME_PRESETS[theme].tokens)

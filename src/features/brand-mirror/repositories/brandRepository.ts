@@ -1,5 +1,5 @@
 import type { BrandDocument } from '../models/brandMirrorModels'
-import { clampTokenValues, validateTokens } from '../domain/brandRules'
+import { clampTokenValues, normalizeTokens, validateTokens } from '../domain/brandRules'
 import type { StorageService } from '../services/storageService'
 
 export interface BrandRepository {
@@ -16,7 +16,7 @@ export class LocalBrandRepository implements BrandRepository {
     try {
       const candidate: unknown = JSON.parse(raw)
       if (!isDocument(candidate)) return null
-      return { ...candidate, tokens: clampTokenValues(candidate.tokens) }
+      return { ...candidate, tokens: normalizeTokens(clampTokenValues(candidate.tokens)) }
     } catch {
       return null
     }
