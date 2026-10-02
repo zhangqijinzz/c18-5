@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { SCALE_STOPS } from '../color-scale/scaleGenerator'
 import type { BrandTokens } from '../models/brandMirrorModels'
 
 type TokenCategory = 'all' | 'color' | 'radius' | 'spacing' | 'type'
@@ -15,13 +16,18 @@ const filters: { id: TokenCategory; label: string }[] = [
 export function TokenExplorer({ tokens }: { tokens: BrandTokens }) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<TokenCategory>('all')
-  const entries = useMemo<TokenEntry[]>(() => [
-    { key: 'color.primary', label: '主色', category: 'color', value: tokens.primary },
-    { key: 'color.secondary', label: '辅助色', category: 'color', value: tokens.secondary },
-    ...tokens.radiusScale.map((value, index) => ({ key: `radius.${index + 1}`, label: `圆角 ${index + 1}`, category: 'radius' as const, value: `${value}px` })),
-    ...tokens.spacingScale.map((value, index) => ({ key: `spacing.${index + 1}`, label: `间距 ${index + 1}`, category: 'spacing' as const, value: `${value}px` })),
-    ...tokens.typeScale.map((value, index) => ({ key: `type.${index + 1}`, label: `字体 ${index + 1}`, category: 'type' as const, value: `${value}px` })),
-  ], [tokens])
+  const entries = useMemo<TokenEntry[]>(() => {
+    const scale = tokens.primaryScale ?? []
+    return [
+      ...(scale.length === SCALE_STOPS.length
+        ? scale.map((value, index) => ({ key: `color.primary-${SCALE_STOPS[index]}`, label: `主色梯度 ${SCALE_STOPS[index]}`, category: 'color' as const, value }))
+        : []),
+      { key: 'color.secondary', label: '辅助色', category: 'color' as const, value: tokens.secondary },
+      ...tokens.radiusScale.map((value, index) => ({ key: `radius.${index + 1}`, label: `圆角 ${index + 1}`, category: 'radius' as const, value: `${value}px` })),
+      ...tokens.spacingScale.map((value, index) => ({ key: `spacing.${index + 1}`, label: `间距 ${index + 1}`, category: 'spacing' as const, value: `${value}px` })),
+      ...tokens.typeScale.map((value, index) => ({ key: `type.${index + 1}`, label: `字体 ${index + 1}`, category: 'type' as const, value: `${value}px` })),
+    ]
+  }, [tokens])
   const normalizedQuery = query.trim().toLowerCase()
   const visibleEntries = entries.filter((entry) => {
     const matchesCategory = category === 'all' || entry.category === category
